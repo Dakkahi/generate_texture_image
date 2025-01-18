@@ -1,1 +1,1 @@
-# generate_texture_image_withGAN
+# generate_texture_image
