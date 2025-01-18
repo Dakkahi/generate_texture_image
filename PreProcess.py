@@ -34,7 +34,8 @@ class PreProcess:
 
     def PreProcess_ImageEdit_withaugmentation(self, InputFolderPath, augment_count):
         transform = transforms.Compose([                    #変換の定義
-            transforms.ToTensor(),  # 正規化なしで 0～255 のままテンソル形式へ変換
+            transforms.ToTensor(),  # テンソルに変換
+            transforms.Normalize(mean=[0.5], std=[0.5]),  # -1～1に正規化
             transforms.RandomRotation(degrees=(-90, 90)),  # -π/2からπ/2の範囲でランダムに回転
             transforms.RandomCrop(self.ImageSize),  # 256x256にランダムクロップ
             transforms.RandomHorizontalFlip(p=0.5),  # 1/2の確率で左右反転
@@ -42,7 +43,7 @@ class PreProcess:
             transforms.ColorJitter(brightness=0.2, contrast=0.2)  # 明るさとコントラストの調整のみ
         ])
 
-        for filename in tqdm(os.listdir(InputFolderPath), desc = "File Processing"): #Train/Eval/Testに分ける
+        for filename in tqdm(os.listdir(InputFolderPath), desc = "File Processing"):
             if filename.endswith(('.jpg', '.jpeg', '.png', '.bmp', '.gif')):
                 # 画像の読み込み
                 image_path = os.path.join(InputFolderPath, filename)
