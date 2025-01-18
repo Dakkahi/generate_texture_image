@@ -8,7 +8,7 @@ import os
 
 
 class Generator(nn.Module):
-    def __init__(self, z_dim=100, img_channels=1, features_g=64):
+    def __init__(self, z_dim, img_channels=1, features_g=64):
         super(Generator, self).__init__()
         self.gen = nn.Sequential(
             self._block(z_dim, features_g * 64, 4, 1, 0),  # 1x1 -> 4x4
