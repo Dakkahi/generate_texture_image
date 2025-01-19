@@ -23,10 +23,11 @@ from torchvision.datasets import ImageFolder
 
 
 class Learn:
-    def __init__(self, ImageSize, feature_num, OutputSize, batch_size, modelSaveSpan, use_existing_folder, loadEpoch):
+    def __init__(self, ImageSize, z_dim, feature_num, OutputSize, batch_size, modelSaveSpan, use_existing_folder, loadEpoch):
         #諸パラメータの設定
         #self.predictionFutureFrame = predictionFutureFrame
         self.ImageSize = ImageSize
+        self.z_dim = z_dim
         self.feature_num = feature_num
         self.batch_size = batch_size
         self.OutputSize = OutputSize
@@ -98,46 +99,93 @@ class Learn:
     def learn(self, criterion, optimizer_gen, optimizer_dis, n_epochs):
         # 学習の実行
         print(f"device : {self.device}")
+        real_label = 1.0
+        fake_label = 0.0
         for epoch in tqdm.tqdm(range(self.loadEpoch,n_epochs)):
             #discriminatorの学習
+            TrainDisLossSum = 0
+            TrainGenLossSum = 0
             self.gen_model.train()
-            trainLossSum = 0
-            for x_train, y_train in self.trainLoader_Image:
-                rnd_val = random.randint(1, 4)
-                x_train = TF.rotate(x_train, 90*rnd_val)
-                y_pred = self.model(x_train)
-                # print(y_tensor)
-                # print(y_pred)
-                loss = criterion(y_pred, y_train)
-                trainLossSum += loss.item()
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            self.writer.add_scalar('training loss',
-                            trainLossSum,
+            self.dis_model.train()
+            for x_train in self.trainLoader_Image:
+                x_train = x_train.to(self.device)
+
+                # ======== Discriminatorの学習 ========
+                y_real = self.dis_model(x_train)
+                # 本物データの損失
+                real_loss = criterion(y_real, torch.full_like(y_real, real_label))
+
+                # 偽物データの損失
+                noise = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ランダムノイズ
+                fake_images = self.gen_model(noise)
+                fake_output = self.dis_model(fake_images.detach())  # Generatorを更新しないようdetach
+                fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
+                
+                # 全体の損失
+                loss_dis = real_loss + fake_loss
+                optimizer_dis.zero_grad()
+                loss_dis.backward()
+                optimizer_dis.step()
+                TrainDisLossSum += loss_dis.item()
+
+
+                # ======== Generatorの学習 ========
+                y_fake = self.dis_model(fake_images)
+                loss_gen = criterion(y_fake, torch.full_like(y_fake, real_label))
+                optimizer_gen.zero_grad()
+                loss_gen.backward()
+                optimizer_gen.step()
+                TrainGenLossSum += loss_gen.item()
+
+
+            self.writer.add_scalar('training discriminator loss',
+                            TrainDisLossSum/len(self.trainLoader_Image),
                                 epoch)
+            
+            self.writer.add_scalar('training generator loss',
+                            TrainGenLossSum/len(self.trainLoader_Image),
+                                epoch)
+            
+
+            # 検証
             if (epoch + 1) % self.modelSaveSpan == 0:
                 #print("Eval with EvalLoader:")
-                self.model.eval()
-                lossEachPart = torch.zeros(self.OutputSize).to(self.device)
-                evalLossSum = 0
-                evalCount = 0
-                for x_test, y_test in self.testLoader:
-                    y_pred = self.model(x_test)
-                    loss = criterion(y_pred, y_test)
-                    # diff = torch.abs(y_pred - y_test)
-                    # diffSum = torch.sum(diff,0)
-                    # lossEachPart += diffSum
-                    evalLossSum += loss.item()
-                    evalCount += 1
-                #print("Avg Eval Loss:" + str(evalLossSum/evalCount))
-                modelPath = os.path.join(self.ModelFolderPath,str(epoch+1) + ".pth")
-                torch.save(self.model, modelPath)
-                #print("saving model at " + modelPath)
-                self.writer.add_scalar('evalLoss',
-                                evalLossSum,
-                                    epoch)
-                # for i in range(6,len(lossEachPart)):
-                #     self.writer.add_scalar("Diff_" + str(i),lossEachPart[i],epoch)
+                self.gen_model.eval()
+                self.dis_model.eval()
+                eValDisLossSum = 0
+                EvalGenLossSum = 0
+                with torch.no_grad():  # 検証中は勾配計算を無効化
+                    for x_eval in self.evalLoader_Image:  # 検証用データローダ
+                        x_eval = x_eval.to(self.device)
+
+                        # ======== Discriminatorの検証 ========
+                        y_real = self.dis_model(x_eval)
+                        # 本物データの損失
+                        real_loss = criterion(y_real, torch.full_like(y_real, real_label))
+
+                        # 偽物データの損失
+                        noise = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ランダムノイズ
+                        fake_images = self.gen_model(noise)
+                        fake_output = self.dis_model(fake_images)
+                        fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
+
+                        # 全体の損失
+                        loss_dis = real_loss + fake_loss
+                        EvalDisLossSum += loss_dis.item()
+
+                        # ======== Generatorの検証 ========
+                        y_fake = self.dis_model(fake_images)
+                        loss_gen = criterion(y_fake, torch.full_like(y_fake, real_label))
+                        EvalGenLossSum += loss_gen.item()
+
+                # 平均損失をTensorBoardに記録
+                self.writer.add_scalar('validation discriminator loss',
+                                EvalDisLossSum / len(self.evalLoader_Image),
+                                epoch)
+
+                self.writer.add_scalar('validation generator loss',
+                                EvalGenLossSum / len(self.evalLoader_Image),
+                                epoch)
+                
         self.writer.close()
     
