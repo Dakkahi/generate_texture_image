@@ -8,7 +8,7 @@ import os
 
 
 class Generator(nn.Module):
-    def __init__(self, z_dim, img_channels=1, features_g=64):
+    def __init__(self, z_dim, features_g, img_channels=1):
         super(Generator, self).__init__()
         self.gen = nn.Sequential(
             self._block(z_dim, features_g * 64, 4, 1, 0),  # 1x1 -> 4x4
@@ -33,7 +33,7 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, img_channels=1, features_d=64):
+    def __init__(self, features_d , img_channels=1):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(
             self._block(img_channels, features_d, 4, 2, 1),  # 256x256 -> 128x128
