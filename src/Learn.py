@@ -23,14 +23,12 @@ from torchvision.datasets import ImageFolder
 
 
 class Learn:
-    def __init__(self, ImageSize, z_dim, feature_num, OutputSize, batch_size, modelSaveSpan, use_existing_folder, loadEpoch):
+    def __init__(self, ImageSize, z_dim, batch_size, modelSaveSpan, use_existing_folder, loadEpoch):
         #諸パラメータの設定
         #self.predictionFutureFrame = predictionFutureFrame
         self.ImageSize = ImageSize
         self.z_dim = z_dim
-        self.feature_num = feature_num
         self.batch_size = batch_size
-        self.OutputSize = OutputSize
         self.modelSaveSpan = modelSaveSpan
         self.useAugmentation = True
         self.useCustomLossFunction = True
@@ -57,10 +55,10 @@ class Learn:
     
 
     # 要修正
-    def data_loader_GAN(self,FolderPath, DataSetsClass):
+    def data_loader_GAN(self, FolderPath, DataSetsClass):
         #データローダの生成
         if DataSetsClass == DataSets.DataSets_forGAN:
-            self.dataloader = DataLoader(DataSets.DataSets.DataSets_forGAN(data_dir = FolderPath, ImageSize = self.ImageSize), batch_size=self.batch_size, shuffle=True)
+            self.dataloader = DataLoader(DataSets.DataSets_forGAN(data_dir = FolderPath, ImageSize = self.ImageSize), batch_size=self.batch_size, shuffle=True)
             X = self.dataloader.dataset.__getitem__(0)
             print(X.size())
             return X
@@ -69,10 +67,9 @@ class Learn:
 
 
 
-    def network_GAN(self, gen_model, dis_model, z_dim, lr, weight_decay):
+    def network_GAN(self, gen_model, dis_model, lr_gen, lr_dis, betas, weight_decay):
         # ネットワークの設定
         ImageSize = self.ImageSize
-        OutputSize = self.OutputSize
         self.gen_model = gen_model.to(self.device)
         self.dis_model = dis_model.to(self.device)
         if self.loadEpoch != 0:
@@ -80,7 +77,7 @@ class Learn:
             self.dis_model = torch.load(os.path.join(self.ModelFolderPath,str(self.loadEpoch) + "_dis.pth"))
 
         # モデルのグラフをTensorBoardに追加
-        example_input_gen = torch.randn(self.batch_size, z_dim, 1, 1).to(self.device)  # ダミーの入力データ
+        example_input_gen = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ダミーの入力データ
         self.writer.add_graph(self.gen_model, example_input_gen)
 
         example_input_dis = torch.randn(self.batch_size, 1, self.ImageSize, self.ImageSize).to(self.device)  # ダミーの入力データ
@@ -88,8 +85,8 @@ class Learn:
         
         # 損失関数と最適化手法の定義
         criterion = nn.BCELoss()
-        optimizer_gen = optim.Adam(self.gen_model.parameters(), lr = lr, weight_decay=weight_decay)
-        optimizer_dis = optim.Adam(self.dis_model.parameters(), lr = lr, weight_decay=weight_decay)
+        optimizer_gen = optim.Adam(self.gen_model.parameters(), lr = lr_gen, betas = betas, weight_decay = weight_decay)
+        optimizer_dis = optim.Adam(self.dis_model.parameters(), lr = lr_dis, betas = betas, weight_decay = weight_decay)
 
         if(os.path.isdir(self.ModelFolderPath) is False):
             os.makedirs(self.ModelFolderPath)
@@ -107,7 +104,7 @@ class Learn:
             TrainGenLossSum = 0
             self.gen_model.train()
             self.dis_model.train()
-            for x_train in self.data_loader:
+            for x_train in self.dataloader:
                 x_train = x_train.to(self.device)
 
                 # ======== Discriminatorの学習 ========
@@ -139,11 +136,11 @@ class Learn:
 
 
             self.writer.add_scalar('training discriminator loss',
-                            TrainDisLossSum/len(self.trainLoader_Image),
+                            TrainDisLossSum/len(self.dataloader),
                                 epoch)
             
             self.writer.add_scalar('training generator loss',
-                            TrainGenLossSum/len(self.trainLoader_Image),
+                            TrainGenLossSum/len(self.dataloader),
                                 epoch)
             
 
