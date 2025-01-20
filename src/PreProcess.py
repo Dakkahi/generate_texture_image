@@ -6,8 +6,6 @@ import sys
 sys.path.append("./src")
 import torch.utils.data
 import torchvision.transforms as transforms
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 from torch.utils.data import DataLoader, Dataset
 import DataSets
 import torchvision.utils as utils
