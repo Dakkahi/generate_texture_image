@@ -116,10 +116,11 @@ class Learn:
                 noise = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ランダムノイズ
                 fake_images = self.gen_model(noise)
                 fake_output = self.dis_model(fake_images.detach())  # Generatorを更新しないようdetach
-                fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
+                # fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
                 
                 # 全体の損失
-                loss_dis = real_loss + fake_loss
+                # loss_dis = real_loss + fake_loss
+                loss_dis = torch.mean(F.relu(1.0 - y_real)) + torch.mean(F.relu(1.0 + fake_output))
                 optimizer_dis.zero_grad()
                 loss_dis.backward()
                 optimizer_dis.step()
@@ -128,7 +129,8 @@ class Learn:
 
                 # ======== Generatorの学習 ========
                 y_fake = self.dis_model(fake_images)
-                loss_gen = criterion(y_fake, torch.full_like(y_fake, real_label))
+                # loss_gen = criterion(y_fake, torch.full_like(y_fake, real_label))
+                loss_gen = -torch.mean(fake_output)
                 optimizer_gen.zero_grad()
                 loss_gen.backward()
                 optimizer_gen.step()
