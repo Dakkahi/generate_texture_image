@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, transforms, utils
 import matplotlib.pyplot as plt
+import torch.nn.utils as utils
 import os
 
 
@@ -43,13 +44,12 @@ class Discriminator(nn.Module):
             self._block(features_d * 8, features_d * 16, 4, 2, 1),  # 16x16 -> 8x8
             self._block(features_d * 16, features_d * 32, 4, 2, 1),  # 8x8 -> 4x4
             nn.Conv2d(features_d * 32, 1, kernel_size=4, stride=1, padding=0),  # 4x4 -> 1x1
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
     def _block(self, in_channels, out_channels, kernel_size, stride, padding):
         return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=False),
-            nn.BatchNorm2d(out_channels),
+            utils.spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=False)), # スペクトル正規化で勾配爆発を防ぐ
             nn.LeakyReLU(0.2)
         )
 
