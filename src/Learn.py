@@ -110,7 +110,7 @@ class Learn:
                 # ======== Discriminatorの学習 ========
                 y_real = self.dis_model(x_train)
                 # 本物データの損失
-                real_loss = criterion(y_real, torch.full_like(y_real, real_label))
+                # real_loss = criterion(y_real, torch.full_like(y_real, real_label))
 
                 # 偽物データの損失
                 noise = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ランダムノイズ
@@ -130,7 +130,7 @@ class Learn:
                 # ======== Generatorの学習 ========
                 y_fake = self.dis_model(fake_images)
                 # loss_gen = criterion(y_fake, torch.full_like(y_fake, real_label))
-                loss_gen = -torch.mean(fake_output)
+                loss_gen = -torch.mean(y_fake)
                 optimizer_gen.zero_grad()
                 loss_gen.backward()
                 optimizer_gen.step()
