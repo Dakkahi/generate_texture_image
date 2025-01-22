@@ -23,7 +23,7 @@ from torchvision.datasets import ImageFolder
 
 
 class Learn:
-    def __init__(self, ImageSize, z_dim, batch_size, modelSaveSpan, use_existing_folder, loadEpoch):
+    def __init__(self, ImageSize, z_dim, batch_size, modelSaveSpan, use_existing_folder, loadEpoch_gen, loadEpoch_dis):
         #諸パラメータの設定
         #self.predictionFutureFrame = predictionFutureFrame
         self.ImageSize = ImageSize
@@ -39,7 +39,8 @@ class Learn:
             os.makedirs(f"{self.ModelFolderPath}/dis")
         else:
             self.ModelFolderPath = use_existing_folder
-        self.loadEpoch = loadEpoch
+        self.loadEpoch_gen = loadEpoch_gen
+        self.loadEpoch_dis = loadEpoch_dis
         self.writerPath = 'runs/' + ("Aug_" if self.useAugmentation else "") + ("CF_" if self.useCustomLossFunction else "") + "_" + self.d
         print("tensorboard --logdir=" + self.writerPath)
         #解析用のやつ
@@ -72,9 +73,10 @@ class Learn:
         ImageSize = self.ImageSize
         self.gen_model = gen_model.to(self.device)
         self.dis_model = dis_model.to(self.device)
-        if self.loadEpoch != 0:
-            self.gen_model = torch.load(os.path.join(self.ModelFolderPath,str(self.loadEpoch) + "_gen.pth"))
-            self.dis_model = torch.load(os.path.join(self.ModelFolderPath,str(self.loadEpoch) + "_dis.pth"))
+        if self.loadEpoch_gen != 0:
+            self.gen_model = torch.load(os.path.join(f"{self.ModelFolderPath}/gen" ,str(self.loadEpoch_gen) + "_gen.pth"))
+        if self.loadEpoch_dis != 0:
+            self.dis_model = torch.load(os.path.join(f"{self.ModelFolderPath}/dis" ,str(self.loadEpoch_dis) + "_dis.pth"))
 
         # モデルのグラフをTensorBoardに追加
         example_input_gen = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ダミーの入力データ
@@ -98,7 +100,7 @@ class Learn:
         print(f"device : {self.device}")
         real_label = 1.0
         fake_label = 0.0
-        for epoch in tqdm.tqdm(range(self.loadEpoch,n_epochs)):
+        for epoch in tqdm.tqdm(range(n_epochs)):
             #discriminatorの学習
             TrainDisLossSum = 0
             TrainGenLossSum = 0
@@ -107,24 +109,27 @@ class Learn:
             for x_train in self.dataloader:
                 x_train = x_train.to(self.device)
 
-                # ======== Discriminatorの学習 ========
-                y_real = self.dis_model(x_train)
-                # 本物データの損失
-                # real_loss = criterion(y_real, torch.full_like(y_real, real_label))
-
                 # 偽物データの損失
                 noise = torch.randn(self.batch_size, self.z_dim, 1, 1).to(self.device)  # ランダムノイズ
                 fake_images = self.gen_model(noise)
                 fake_output = self.dis_model(fake_images.detach())  # Generatorを更新しないようdetach
                 # fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
-                
-                # 全体の損失
-                # loss_dis = real_loss + fake_loss
-                loss_dis = torch.mean(F.relu(1.0 - y_real)) + torch.mean(F.relu(1.0 + fake_output))
-                optimizer_dis.zero_grad()
-                loss_dis.backward()
-                optimizer_dis.step()
-                TrainDisLossSum += loss_dis.item()
+
+                # ======== Discriminatorの学習 強くなりすぎないように2回に1回だけ学習========
+                if epoch % 2 == 0:
+                    y_real = self.dis_model(x_train)
+                    # 本物データの損失
+                    # real_loss = criterion(y_real, torch.full_like(y_real, real_label))
+
+                    
+                    # 全体の損失
+                    # loss_dis = real_loss + fake_loss
+                    loss_dis = torch.mean(F.relu(1.0 - y_real)) + torch.mean(F.relu(1.0 + fake_output))
+                    optimizer_dis.zero_grad()
+                    loss_dis.backward()
+                    optimizer_dis.step()
+                    TrainDisLossSum += loss_dis.item()
+
 
 
                 # ======== Generatorの学習 ========
@@ -186,6 +191,10 @@ class Learn:
             #     self.writer.add_scalar('validation generator loss',
             #                     EvalGenLossSum / len(self.evalLoader_Image),
             #                     epoch)
+
+            if (epoch + 1) % self.modelSaveSpan == 0:
+                torch.save(self.gen_model, f"{self.ModelFolderPath}/gen")
+                torch.save(self.dis_model, f"{self.ModelFolderPath}/dis")
                 
         self.writer.close()
     
