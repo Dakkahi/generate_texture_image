@@ -46,6 +46,8 @@ class Learn:
         #解析用のやつ
         self.writer = SummaryWriter(self.writerPath)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.ModelFolderPath_gen = f"{self.ModelFolderPath}/gen"
+        self.ModelFolderPath_dis= f"{self.ModelFolderPath}/dis"
 
     def present_time(self):
         t_delta = datetime.timedelta(hours=9)
@@ -193,8 +195,8 @@ class Learn:
             #                     epoch)
 
             if (epoch + 1) % self.modelSaveSpan == 0:
-                torch.save(self.gen_model, f"{self.ModelFolderPath}/gen")
-                torch.save(self.dis_model, f"{self.ModelFolderPath}/dis")
+                torch.save(self.gen_model, f"{self.ModelFolderPath_gen}/{epoch+1}_gen.pth")
+                torch.save(self.dis_model, f"{self.ModelFolderPath_dis}/{epoch+1}_dis.pth")
                 
         self.writer.close()
     
