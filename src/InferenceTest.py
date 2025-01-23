@@ -6,6 +6,7 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
+from PIL import Image
 import sys
 import csv
 sys.path.append("./src")
