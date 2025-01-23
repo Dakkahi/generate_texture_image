@@ -20,7 +20,6 @@ class InferenceTest:
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.gen_model = torch.load(gen_model_path).to(self.device)
         self.gen_model.eval()
-        self.dis_model.eval()
         self.ImageSize = ImageSize
         if os.path.isdir("Images") is False:
             os.makedirs("Images")
