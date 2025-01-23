@@ -118,19 +118,19 @@ class Learn:
                 # fake_loss = criterion(fake_output, torch.full_like(fake_output, fake_label))
 
                 # ======== Discriminatorの学習 強くなりすぎないように2回に1回だけ学習========
-                if epoch % 2 == 0:
-                    y_real = self.dis_model(x_train)
-                    # 本物データの損失
-                    # real_loss = criterion(y_real, torch.full_like(y_real, real_label))
+                # if epoch % 2 == 0:
+                y_real = self.dis_model(x_train)
+                # 本物データの損失
+                # real_loss = criterion(y_real, torch.full_like(y_real, real_label))
 
-                    
-                    # 全体の損失
-                    # loss_dis = real_loss + fake_loss
-                    loss_dis = torch.mean(F.relu(1.0 - y_real)) + torch.mean(F.relu(1.0 + fake_output))
-                    optimizer_dis.zero_grad()
-                    loss_dis.backward()
-                    optimizer_dis.step()
-                    TrainDisLossSum += loss_dis.item()
+                
+                # 全体の損失
+                # loss_dis = real_loss + fake_loss
+                loss_dis = torch.mean(F.relu(1.0 - y_real)) + torch.mean(F.relu(1.0 + fake_output))
+                optimizer_dis.zero_grad()
+                loss_dis.backward()
+                optimizer_dis.step()
+                TrainDisLossSum += loss_dis.item()
 
 
 
