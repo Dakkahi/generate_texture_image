@@ -56,7 +56,8 @@ class PreProcess:
         if os.path.isdir("PreProcessedImage") is False:
             os.makedirs("PreProcessedImage")
 
-        for filepath in tqdm(os.listdir(folder_path), desc = "extension converting"):
+        for filename in tqdm(os.listdir(folder_path), desc = "extension converting"):
+            file_path = filepath = os.path.join(folder_path, filename)
             data = torch.load(filepath)
 
             # テンソルが画像データの場合を想定 (例: shape [C, H, W])
@@ -73,6 +74,6 @@ class PreProcess:
 
                 # PIL Imageとして保存
                 img = Image.fromarray(data)
-                output_file = f"{filepath.split(".")[0]}_image.png"
+                output_file = f"{filename.split('.')[0]}_image.png"
                 img.save(f"PreProcessedImage/{output_file}")
-                print(f"画像が保存されました: {output_file}")
+                # print(f"画像が保存されました: {output_file}")
