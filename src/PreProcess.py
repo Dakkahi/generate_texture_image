@@ -50,3 +50,29 @@ class PreProcess:
                     augmented_tensor = transform(image)
                     tensor_path = os.path.join(f"{self.OutputFolderPath}", filename.split('.')[0] + f'_{file_idx}' + '.pt')
                     torch.save(augmented_tensor, tensor_path)
+    
+
+    def pt2png(self, folder_path):
+        if os.path.isdir("PreProcessedImage") is False:
+            os.makedirs("PreProcessedImage")
+
+        for filepath in tqdm(os.listdir(folder_path), desc = "extension converting"):
+            data = torch.load(filepath)
+
+            # テンソルが画像データの場合を想定 (例: shape [C, H, W])
+            if isinstance(data, torch.Tensor):
+                # 必要ならデータを正規化または変換
+                data = data.squeeze(0)  # チャンネル次元が1の場合削除 (例: [1, H, W] → [H, W])
+                data = data.numpy()  # NumPy配列に変換
+
+                # ピクセル値を0-255の範囲にスケール
+                if data.max() <= 1.0:
+                    data = (data * 255).astype(np.uint8)
+                else:
+                    data = data.astype(np.uint8)
+
+                # PIL Imageとして保存
+                img = Image.fromarray(data)
+                output_file = f"{filepath.split(".")[0]}_image.png"
+                img.save(f"PreProcessedImage/{output_file}")
+                print(f"画像が保存されました: {output_file}")
